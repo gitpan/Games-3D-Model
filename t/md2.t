@@ -16,10 +16,11 @@ BEGIN
 can_ok ('Games::3D::Model::MD2', qw/ 
   new render_frame frames _read_file
   _render_morphed_frame render time_warp states state
+  color alpha last_frame current_frame
   /);
 
-#my $area = Games::3D::Area->new ( );
+#my $model = Games::3D::Model::MD2->new ( );
 #
-#is (ref($area), 'Games::3D::Area', 'new worked');
+#is (ref($model), 'Games::3D::Model::MD2', 'new worked');
 
 

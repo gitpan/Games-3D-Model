@@ -12,7 +12,7 @@ use SDL::OpenGL;
 use vars qw/@ISA $VERSION/;
 @ISA = qw/Exporter/;
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 # private vars
 
@@ -58,11 +58,33 @@ sub new
 
 sub _read_file
   {
-  my $self = shift;
+  my ($self,$filename) = @_;
 
-  $self;
+  return if !ref $filename && $filename eq '';          # for tests
+
+  if (ref($filename) eq 'Games::Resource')
+    {
+    $self->_parse_data($filename->contents());
+    }
+
+  # read in entire model
+  open my $FILE, $filename or die ("Cannot read file $filename: $!");
+  binmode $FILE;
+  my ($buffer, $file);
+  while (sysread($FILE,$buffer,8192) != 0)
+    {
+    $file .= $buffer;
+    }
+  close $FILE;
+  $self->_parse_data($file);
   }
 
+sub _parse_data
+  {
+  my $self = shift;
+
+  }
+ 
 sub _init
   {
   my ($self,$args) = @_;
@@ -85,7 +107,7 @@ sub _init
   $self->{old_state_end} = 0;
   
   $self->{time_warp} = 1;			# morph faster/slower
-  $self->{time_per_frame} = 100;		# ms between frames
+  $self->{time_per_frame} = 100;			# ms between frames
   
   $self->{last_frame_time} = 0;			# when was last frame
 
@@ -142,12 +164,12 @@ sub state
     $self->{cur_frame} = $self->{states}->[$new_state]->[3];	# start frame
     $self->{state} = $new_state;
     $self->{next_state} = undef;
-    $self->{old_state_end} = 0;
+    $self->{old_state_end} = $current_time;
     }
   else
     {
     $self->{next_state} = $new_state;
-    $self->{old_state_end} = $current_time;
+    $self->{next_state_start} = $current_time + $delay;
     }
   }
 
@@ -181,28 +203,68 @@ sub render
   # bases on the current time
   my ($self,$current_time,$time_warp) = @_;
 
-  # in ms, 50 for a time_warp of 1.0
-  my $time_per_frame = 50 * ($self->{time_warp} * abs($time_warp || 1));
+  my $percent;
 
-  if ($current_time - $self->{last_frame_time} > $time_per_frame)
+  if (defined $self->{next_state})
     {
-    # overshot, switch to next frame
-    if (defined $self->{next_state})
+    # we are going currently from one frame in old state, to the new state
+
+    $percent = 1 - ($self->{next_state_start} - $current_time)  
+      / $self->{next_state_delay};
+  
+    # print "switching to state, $percent done\n";  
+    # but the time for the transition is up?
+    if ($percent > 1)
       {
       $self->{state} = $self->{next_state};
-      $self->{next_state} = undef;
-      }
-    $self->{last_frame} = $self->{cur_frame};
-    $self->{cur_frame}++;
-    my $s = $self->{states}->[$self->{state}];
-    $self->{cur_frame} = $s->[3] if $self->{cur_frame} - $s->[3] > $s->[2];
+      $self->{next_state} = undef;		# transition complete
+      my $s = $self->{states}->[$self->{state}];
 
-    $self->{last_frame_time} = $current_time;
+      $percent = 0;
+      $self->{last_frame} = $self->{cur_frame};
+      $self->{cur_frame} = 1;
+      # confine cur frame to state (last frame is 0, so always in range)
+      $s = $self->{states}->[$self->{state}];
+      $self->{cur_frame} = 0 if $self->{cur_frame} > $s->[3];
+      $self->{next_state} = undef;
+      $self->{old_state_end} = $self->{next_state_start};
+      }
+    }
+  else
+    {
+    # assuming the time progressed forward to $current_time and we started
+    # this state at old_state_end, and we make this time per frame:
+  
+    # in ms for a time_warp of 1.0
+    my $time_per_frame = $self->{time_per_frame}
+     * ($self->{time_warp} * abs($time_warp || 1));
+
+    # then we progressed so many frames
+    my $frame1 = ($current_time - $self->{old_state_end}) / $time_per_frame;
+
+    # now we must interpolate between int($frames) and int($frames) + 1
+    $percent = $frame1 - int($frame1);	# 0..1 
+    $frame1 = int($frame1);
+    my $frame2 = $frame1 + 1;
+
+    my $s = $self->{states}->[$self->{state}];
+    # however, both frame numbers must be confined to the current state
+    $frame1 = ($frame1 % $s->[2]) + $s->[3];
+    $frame2 = ($frame2 % $s->[2]) + $s->[3];
+
+    $self->{last_frame} = $frame1;
+    $self->{cur_frame} = $frame2;
     }
 
-  $self->_render_morphed_frame(
-    $self->{last_frame}, $self->{cur_frame},
-    ($current_time - $self->{last_frame_time}) / $time_per_frame);
+  # make percent between 0..1
+  $percent = abs($percent);
+  $percent = 1 if $percent > 1;
+
+  # print "$percent \n" if ($percent == 0) || $percent == 1;
+
+  $self->_render_morphed_frame( 
+    $self->{last_frame}, $self->{cur_frame}, $percent );
+
   $self;
   }
 
@@ -217,13 +279,43 @@ sub _render_morphed_frame
   glPushMatrix();
     glColor($percent,$percent,$percent,1);
     glScale($scale,$scale,$scale);
-    glTranslate(0,0,40);
+    #glTranslate(0,0,40);
     glDisableClientState(GL_COLOR_ARRAY());
     glEnableClientState(GL_VERTEX_ARRAY());
     glVertexPointer(3,GL_DOUBLE(),0,$vertices);
     glDrawElements(GL_QUADS(), 24, GL_UNSIGNED_BYTE(), $indicies);
   glPopMatrix();
 
+  }
+
+sub current_frame
+  {
+  my $self = shift;
+
+  $self->{cur_frame};
+  }
+
+sub last_frame
+  {
+  my $self = shift;
+
+  $self->{last_frame};
+  }
+
+sub color
+  {
+  my $self = shift;
+
+  $self->{color} = shift if @_ > 0;
+  $self->{color};
+  }
+
+sub alpha
+  {
+  my $self = shift;
+
+  $self->{alpha} = shift if @_ > 0;
+  $self->{alpha};
   }
 
 1;
@@ -307,6 +399,37 @@ time_warp, so you can make different instances of one model (e.g. each guard
 in your game) render in a different speed. This avoids the "syncronus" look
 of groupds of the same type of models. Values would, f.i. be between 0.9 and
 1.10 to make the different guards slower or faster.
+
+=item color()
+
+        $rgb = $model->color();         # [$r,$g, $b ]
+        $model->color(1,0.1,0.8);       # set RGB
+        $model->color(undef);           # random color (default)
+
+Sets the color, that will be set to render the model. The random color
+setting means each triangle will get a random RGB color.
+
+=item alpha()
+
+        $a = $model->alpha();           # $a
+        $model->color(0.8);             # set A
+        $model->alpha(undef);           # set's it to 1.0 (seems an OpenGL
+                                        # specific set because
+                                        # glColor($r,$g,$b) also sets $a == 1
+
+Sets the alpha value. Only usefull when using blending (e.g. transparency).
+
+=item current_frame()
+
+	$frame = $model->current_frame();
+
+Returns the index number of the current frame.
+
+=item last_frame()
+
+	$frame = $model->last_frame();
+
+Returns the index number of the last rendered frame.
 
 =back
 

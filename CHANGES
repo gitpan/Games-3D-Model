@@ -15,6 +15,22 @@ Games:3D::Model:
     frames (and from one state to another), plus a time_warp for each model
     plus "local" time_warp which can modify the morph speed for individual
     models
+2003-03-16 v0.03 Tels - 6 tests
+  * added color(), alpha(), current_frame() and last_frame() methods
+  * added interpolated frame rendering for MD2 models (looks cool!)
+  * the modelviewer (http://bloodgate.com/perl/sdl/) now uses these features
+    to render models smoothly (watch them in ultra-slow-motion!) as well
+    as a transparent tracking mode, which shows you the last and the current
+    frame overlayer, and the current interpolated step in between.
+    So why haven't you checked it out yet? Hurry while it is hot!
+  * MD2 model can calculate normals for faces (needs test)
+  * the calculation between which frames we currently interpolate has been
+    simplified and also improved, you can now pass any time (even already
+    gone ones!) to the render() method and it will figure out which frame-set
+    you are in. This means you can do motion blur by rendering the model at
+    -X ms, -2 * X ms etc from now, and then drawing it at X ms on top of that.
+  * allow Games::Resource objects instead of filenames as argument to new()
+  * _read_file() in Model.pm, not MD2.pm (and made it safely inheritable)
 
 Please send me test-reports, your experiences with this and your ideas - I love
 to hear about my work!

@@ -16,6 +16,7 @@ BEGIN
 can_ok ('Games::3D::Model', qw/ 
   new render_frame frames _read_file
   _render_morphed_frame render time_warp states state
+  color alpha last_frame current_frame
   /);
 
 my $model = Games::3D::Model->new ( file => '');

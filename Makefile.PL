@@ -6,6 +6,7 @@ WriteMakefile(
     'VERSION_FROM'	=> 'lib/Games/3D/Model.pm', # finds $VERSION
     'PREREQ_PM'		=> {
 			SDL => '1.20.0',
+			Games::3D::World => '0.04',
 			}, # e.g., Module::Name => 1.1
     'LIBS'		=> [ ], # e.g., '-lm'
     'DEFINE'		=> '', # e.g., '-DHAVE_SOMETHING'

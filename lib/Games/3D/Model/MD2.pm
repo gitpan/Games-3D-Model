@@ -13,7 +13,7 @@ use SDL::OpenGL;
 use vars qw/@ISA $VERSION/;
 @ISA = qw/Games::3D::Model Exporter/;
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 ##############################################################################
 # struct used to load file
@@ -90,24 +90,6 @@ sub _init
     [ 14, 'dying forward', 	 5, 186 ],
     [ 15, 'dying slowly back', 	 8, 191 ],
     ];  
-  }
-
-sub _read_file
-  {
-  my ($self,$filename) = @_;
-
-  return if $filename eq '';		# for tests
-
-  # read in entire model
-  open my $FILE, $filename or die ("Cannot read file $filename: $!");
-  binmode $FILE;
-  my ($buffer, $file);
-  while (sysread($FILE,$buffer,8192) != 0)
-    {
-    $file .= $buffer;
-    }
-  close $FILE;
-  $self->_parse_data($file);
   }
 
 sub _parse_data
@@ -188,14 +170,17 @@ sub render_frame
   # render one frame from the model, without any interpolation
   my ($self,$frame) = @_;
 
+  $frame = $self->{cur_frame} unless defined $frame;
   $frame %= $self->{num_frames};
 
   my $v = $self->{vertices}->[$frame];
   srand(3);
   glBegin(GL_TRIANGLES()); my $ofs;
+  glColor(@{$self->{color}},$self->{alpha}) if defined $self->{color};
   foreach my $t (@{$self->{triangles}})
     {
-    glColor(rand(),rand(),rand(),1.0);	# random colorization
+    glColor(rand(),rand(),rand(),$self->{alpha})
+     unless defined $self->{color}; # random
 
     $ofs = $v->[$t->[0]]; glVertex(@$ofs);
     $ofs = $v->[$t->[2]]; glVertex(@$ofs);
@@ -205,24 +190,69 @@ sub render_frame
   glEnd();
   }
 
+sub _face_normal
+  {
+  # cacluate face-normal
+  my ($p1,$p2,$p3) = @_;
+
+  my $v = Game::3D::Vector->new(   $p2->[0] - $p1->[0],
+                                $p2->[1] - $p1->[1],
+                                $p2->[2] - $p1->[2] );
+  my $w = Game::3D::Vector->new(   $p3->[0] - $p2->[0],
+                                $p3->[1] - $p2->[1],
+                                $p3->[2] - $p2->[2] );
+  $v->cross($w);
+  }
+
 sub _render_morphed_frame
   {
-  # render one frame from the model, without any interpolation
+  # render a frame morphed between two frames (percent goes from 0..1)
   my ($self,$frame_1,$frame_2,$percent) = @_;
 
   $frame_1 %= $self->{num_frames};
   $frame_2 %= $self->{num_frames};
 
-  my $v = $self->{vertices}->[$frame_1];
+#  print "Going from $frame_1 to $frame_2 (at $percent)\n";
+
+  my $v1 = $self->{vertices}->[$frame_1];
+  my $v2 = $self->{vertices}->[$frame_2];
+  glColor(@{$self->{color}},$self->{alpha}) if defined $self->{color};
   srand(3);
-  glBegin(GL_TRIANGLES()); my $ofs;
+  glBegin(GL_TRIANGLES()); my ($ofs1,$ofs2);
   foreach my $t (@{$self->{triangles}})
     {
-    glColor(rand(),rand(),rand(),1.0);	# random colorization
+   
+    #if ($self->{trace})
+    #  {
+    #  glColor(1,1,1,0.5);
+    #  $ofs1 = $v1->[$t->[0]]; glVertex(@$ofs1);
+    #  $ofs1 = $v1->[$t->[2]]; glVertex(@$ofs1);
+    #  $ofs1 = $v1->[$t->[1]]; glVertex(@$ofs1);
+    #  }
 
-    $ofs = $v->[$t->[0]]; glVertex(@$ofs);
-    $ofs = $v->[$t->[2]]; glVertex(@$ofs);
-    $ofs = $v->[$t->[1]]; glVertex(@$ofs);
+    glColor(rand(),rand(),rand(),$self->{alpha})
+      unless defined $self->{color}; # random
+
+    # compute a linear interpolated vertex between frame_1 and frame_2
+
+    for my $i (0,2,1)
+      {
+      $ofs1 = $v1->[$t->[$i]];
+      $ofs2 = $v2->[$t->[$i]];
+
+      glVertex( 
+        $ofs1->[0] + $percent * ($ofs2->[0] - $ofs1->[0]) ,
+        $ofs1->[1] + $percent * ($ofs2->[1] - $ofs1->[1]),
+        $ofs1->[2] + $percent * ($ofs2->[2] - $ofs1->[2]) );
+      }
+    
+    #if ($self->{trace})
+    #  {
+    #  glColor(1,1,1,0.7);
+    #  $ofs1 = $v2->[$t->[0]]; glVertex(@$ofs1);
+    #  $ofs1 = $v2->[$t->[2]]; glVertex(@$ofs1);
+    #  $ofs1 = $v2->[$t->[1]]; glVertex(@$ofs1);
+    #  }
    
     }
   glEnd();
@@ -277,7 +307,28 @@ Render one frame from the model.
 
 Return the number of frames in the model.
 
+=item color()
+
+	$rgb = $model->color();		# [$r,$g, $b ]
+	$model->color(1,0.1,0.8);	# set RGB
+	$model->color(undef);		# random color (default)
+
+Sets the color, that will be set to render the model. The random color
+setting means each triangle will get a random RGB color.
+
+=item alpha()
+
+	$a = $model->alpha();		# $a
+	$model->color(0.8);		# set A
+	$model->alpha(undef);		# set's it to 1.0 (seems an OpenGL
+					# specific set because
+					# glColor($r,$g,$b) also sets $a == 1
+
+Sets the alpha value. Only usefull when using blending (e.g. transparency).
+
 =back
+
+See L<Games::3D::Model> for more documentation.
 
 =head1 BUGS
 
