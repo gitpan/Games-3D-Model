@@ -1,0 +1,13 @@
+BUGS
+CHANGES
+CREDITS
+MANIFEST
+README
+SIGNATURE
+LICENSE
+TODO
+Makefile.PL
+lib/Games/3D/Model/MD2.pm	# .md2 models
+lib/Games/3D/Model.pm		# generic 3D models
+t/md2.t
+t/model.t

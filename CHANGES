@@ -1,0 +1,22 @@
+
+############################################################################## 
+Games:3D::Model:
+
+2003-03-09 v0.01 Tels - 6 tests
+ added:
+  * Game::3D::Model - generic base class
+  * Game::3D::Model::MD2 - load .md2 models
+2003-03-10 v0.02 Tels - 6 tests
+  * Uh, everbody uses Games::, so we do, too.
+  * fixed bareword problem with GL_COLOR_ARRAY vs GL_COLOR_ARRAY()
+  * a bit pointless, but neverthless speed up MD2 rendering by 20-30% by
+    cutting array de-refs
+  * shaped high-level API in Model by adding states, and morphing between
+    frames (and from one state to another), plus a time_warp for each model
+    plus "local" time_warp which can modify the morph speed for individual
+    models
+
+Please send me test-reports, your experiences with this and your ideas - I love
+to hear about my work!
+
+Tels <http://bloodgate.com/>

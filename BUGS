@@ -1,0 +1,11 @@
+
+############################################################################## 
+Games::3D::Model::MD2
+
+* The state list is fixed, and there is no API to change it. Since the hard-
+  coded states seem to corrospondend to Quake, they are probably wrong
+
+Please send me test-reports, your experiences with this and your ideas - I love
+to hear about my work!
+
+Tels <http://bloodgate.com/>

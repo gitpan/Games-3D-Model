@@ -1,0 +1,62 @@
+
+############################################################################## 
+Game::3D::Model - load and render 3D model files
+
+DESCRIPTION
+===========
+
+This package provides you with 3D model support for your OpenGL Applications
+(currently only models with the popular .md2 file format are supported).
+
+For some background information, as well reasoning why this was developed and
+why in this way, browse to:
+
+	http://bloodgate.com/perl/sdl/game.html
+
+See SDL::App::FPS for an example model-viewer, which shows MD2 models in an
+OpenGL window.
+
+Installation
+============
+
+* untar/ungzip the package (replace 0.01 with the version you got)
+
+	tar -xzf Game::3D-Model-0.01.tar.gz
+
+* Check the signature. Download my key from http://bloodgate.com/tels.asc or
+  from my CPAN directory. Then do in the build directory (where you unwrapped
+  stuff):
+
+	cpansign -v
+
+* if the signature verifies OK, proceed. Otherwise NOTIFY ME IMMIDIATELY. Do
+  NOT INSTALL THE PACKAGE! Your system might get compromised!
+
+* Build the make file:
+
+	perl Makefile.PL
+
+* Make the project
+
+	make
+
+* Run the tests:
+
+	make test
+
+* If some tests fail, please notify me.
+
+* If all tests pass, install as root:
+
+	su
+	[enter password]
+	make install
+	exit
+
+Now download SDL::App::FPS from CPAN and look at it's examples to see how to
+use this.
+
+Please send me test-reports, your experiences with this and your ideas - I love
+to hear about my work!
+
+Tels <http://bloodgate.com/>
